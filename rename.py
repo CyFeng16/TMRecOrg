@@ -6,29 +6,48 @@ from datetime import datetime, timedelta
 EXCEL_PATTERN = "*-[0-9]*-[0-9a-zA-Z]*.xlsx"
 
 
+def extract_meeting_times(excel_file_path):
+    """
+    Extracts the earliest join time and latest leave time from a meeting log in an Excel file.
+
+    :param excel_file_path: Path to the Excel file.
+    :return: A tuple containing the earliest join time and latest leave time.
+    """
+    # Read the Excel file, assuming the relevant data starts after some initial rows
+    # You may need to adjust the header row index depending on the file's format
+    df = pd.read_excel(excel_file_path, header=7)
+    print(df)
+
+    # Rename the columns based on the first row of actual data
+    df.columns = df.iloc[0]
+    df = df[1:]
+
+    # Convert the '首次入会时间' and '最后退会时间' columns to datetime format
+    df["首次入会时间"] = pd.to_datetime(df["首次入会时间"])
+    df["最后退会时间"] = pd.to_datetime(df["最后退会时间"])
+
+    # Find the earliest join time and latest leave time
+    earliest_join = df["首次入会时间"].min()
+    latest_leave = df["最后退会时间"].max()
+
+    return earliest_join, latest_leave
+
+
 def read_meeting_info_from_excel(excel_file_path):
     """
     Read the meeting information from the given Excel file.
     """
+
     df = pd.read_excel(excel_file_path, header=None)
     meeting_theme = df.iloc[0, 1]
     meeting_number = df.iloc[1, 1]
-    scheduled_start_time = datetime.strptime(df.iloc[3, 1], "%Y-%m-%d %H:%M:%S")
-    duration_str = df.iloc[5, 1]
-    duration_parts = duration_str.split(":")
-    duration = timedelta(
-        hours=int(duration_parts[0]),
-        minutes=int(duration_parts[1]),
-        seconds=int(duration_parts[2]),
-    )
-    end_time = scheduled_start_time + duration
+    earliest_join, latest_leave = extract_meeting_times(excel_file_path)
 
     return {
         "meeting_theme": meeting_theme,
         "meeting_number": meeting_number,
-        "scheduled_start_time": scheduled_start_time,
-        "duration": duration,
-        "end_time": end_time,
+        "earliest_join_time": earliest_join,
+        "latest_leave_time": latest_leave,
     }
 
 
@@ -37,11 +56,10 @@ def rename_meeting_files_with_flexibility(directory, meeting_info, time_flexibil
     Rename files related to a specific meeting in the given directory with a flexibility in time matching.
     """
     renamed_files = []
-    new_file_base = f"【{meeting_info['scheduled_start_time'].strftime('%Y-%m-%d')}】{meeting_info['meeting_theme']}"
+    new_file_base = f"【{meeting_info['earliest_join_time'].strftime('%Y-%m-%d')}】{meeting_info['meeting_theme']}"
     print("New file base:", new_file_base)
 
     for file in os.listdir(directory):
-
         if meeting_info["meeting_number"] in file:
             file_timestamp_str = "".join(filter(str.isdigit, file.split("-")[0]))
             try:
@@ -147,4 +165,8 @@ def process_all_meetings(directory_path, excel_pattern=EXCEL_PATTERN):
 
 
 if __name__ == "__main__":
-    process_all_meetings("<path>")
+    print(
+        read_meeting_info_from_excel(
+            "/home/feng/HighFrequencyData/0.test/input/10.会议录屏存储/Billy大模型交流202309-713309188-3eb567ce7f7b.xlsx"
+        )
+    )
