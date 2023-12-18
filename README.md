@@ -1,2 +1,2 @@
-# TMRecOrg
-Tencent meeting recording file organization tool
+# TMRenamer
+"Tencent Meeting File Management and Renaming Tool"
